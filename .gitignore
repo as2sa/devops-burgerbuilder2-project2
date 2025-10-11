@@ -27,3 +27,5 @@ yarn-error.log*
 **/**/*.tfstate
 **/**/target/
 
+*.tfstate
+*.tfstate.backup
