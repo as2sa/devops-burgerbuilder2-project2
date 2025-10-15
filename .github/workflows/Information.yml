@@ -1,0 +1,65 @@
+name: Infra (Terraform)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What to run?"
+        required: true
+        default: "plan"
+        type: choice
+        options: [plan, apply]
+  pull_request:
+    paths:
+      - "infra/**/*.tf"
+      - "infra/**/*.tfvars"
+      - "infra/**/*.tmpl"
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      TF_IN_AUTOMATION: "true"
+      RG_NAME: rg-brgr-asf
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      TF_VAR_sql_admin_password: ${{ secrets.SQL_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.4
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: infra
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        if: ${{ github.event.inputs.action != 'apply' }}
+        working-directory: infra
+        run: |
+          terraform plan -input=false -no-color -out=tfplan
+          terraform show -no-color tfplan > plan.txt
+
+      - name: Upload plan artifact
+        if: ${{ github.event.inputs.action != 'apply' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: infra/plan.txt
+
+      - name: Terraform Apply
+        if: ${{ github.event.inputs.action == 'apply' }}
+        working-directory: infra
+        run: terraform apply -input=false -auto-approve

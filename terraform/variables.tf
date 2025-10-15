@@ -1,35 +1,34 @@
+# -------------------------------
+# Project-wide variables
+# -------------------------------
+variable "project_name" {
+  description = "Name prefix for all resources"
+  type        = string
+  default     = "brgr-asf"
+}
+
+variable "rg_name" {
+  description = "Resource group name"
+  type        = string
+  default     = "rg-brgr-asf"
+}
+
 variable "location" {
-  description = "Azure region (location) to deploy resources"
+  description = "Azure region"
   type        = string
-  default     = "eastus"
+  default     = "southeastasia"
 }
 
-variable "resource_group_name" {
-  description = "Name of the Resource Group"
+variable "sql_admin_user" {
+  description = "SQL server admin username"
   type        = string
-  default     = "BurgerBuilderRG-ACA"
+  default     = "sqladminuser"
 }
 
-variable "acr_name_prefix" {
-  description = "Prefix for the ACR name; a random suffix will be appended to ensure uniqueness"
-  type        = string
-  default     = "bbrgacr"
-}
-
-variable "db_server_name" {
-  description = "PostgreSQL flexible server name"
-  type        = string
-  default     = "burger-db-server"
-}
-
-variable "db_admin_login" {
-  description = "PostgreSQL administrator username"
-  type        = string
-  default     = "pgadmin"
-}
-
-variable "db_admin_password" {
-  description = "PostgreSQL administrator password (sensitive). Set via terraform.tfvars or TF_VAR_db_admin_password env var."
+variable "sql_admin_password" {
+  description = "SQL server admin password"
   type        = string
   sensitive   = true
+  default     = ""
+  
 }

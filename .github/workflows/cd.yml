@@ -1,0 +1,97 @@
+name: CD
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Deploy what?"
+        required: true
+        default: "both"
+        type: choice
+        options:
+          - both
+          - backend
+          - frontend
+      vite_api_base_url:
+        description: "Override VITE_API_BASE_URL (optional)"
+        required: false
+        type: string
+
+concurrency:
+  group: cd-prod
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # مطلوب لـ OIDC
+      contents: read
+
+    env:
+      ACR_NAME: brgrasfacr
+      RESOURCE_GROUP: rg-brgr-asf
+      BACKEND_APP: brgr-asf-backend
+      FRONTEND_APP: brgr-asf-frontend
+      ACR_LOGIN: brgrasfacr.azurecr.io
+      LATEST_TAG: latest
+      VITE_API_BASE_URL: https://brgr-asf-backend.purplesand-778ee4a5.southeastasia.azurecontainerapps.io
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute short SHA
+        run: echo "IMAGE_TAG_SHORT=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.ARM_CLIENT_ID }}
+          tenant-id: ${{ secrets.ARM_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Azure CLI version
+        run: az version
+
+      - name: ACR Login
+        run: az acr login --name $ACR_NAME
+
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push Backend (amd64)
+        run: |
+          docker buildx build --platform linux/amd64 -f backend/Dockerfile \
+            -t $ACR_LOGIN/ih-backend:${IMAGE_TAG_SHORT} \
+            -t $ACR_LOGIN/ih-backend:${LATEST_TAG} \
+            . --push
+
+      - name: Build & Push Frontend (amd64)
+        run: |
+          docker buildx build --platform linux/amd64 -f frontend/Dockerfile \
+            --build-arg VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+            -t $ACR_LOGIN/ih-frontend:${IMAGE_TAG_SHORT} \
+            -t $ACR_LOGIN/ih-frontend:${LATEST_TAG} \
+            . --push
+
+      - name: Update Backend ACA image
+        run: |
+          az containerapp update \
+            -n $BACKEND_APP -g $RESOURCE_GROUP \
+            --image $ACR_LOGIN/ih-backend:${IMAGE_TAG_SHORT}
+
+      - name: Update Frontend ACA image
+        run: |
+          az containerapp update \
+            -n $FRONTEND_APP -g $RESOURCE_GROUP \
+            --image $ACR_LOGIN/ih-frontend:${IMAGE_TAG_SHORT}
+
+      - name: Probe via App GW (backend)
+        run: |
+          curl -fsSIX GET https://brgr-asf-backend--i35kbmx.purplesand-778ee4a5.southeastasia.azurecontainerapps.io/actuator/health | cat
+
+      - name: Done
+        run: echo "Deployed ${IMAGE_TAG_SHORT} to ACA via ACR ✅"

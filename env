@@ -1,0 +1,3 @@
+POSTGRES_DB=burgerbuilder
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=YourStrong!Passw0rd

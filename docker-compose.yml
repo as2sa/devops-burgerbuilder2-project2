@@ -1,42 +1,65 @@
-version: '3.8'
-
-
 services:
-  frontend:
-    build:
-      context: ./frontend
-    ports:
-      - '80:80'
-    depends_on:
-      - backend
-     
-
-
-  backend:
-    build:
-      context: ./backend
-    ports:
-      - '8080:8080'
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      DATABASE_URL: jdbc:postgresql://database:5432/burgerbuilder
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: YourStrong!Passw0rd
-    depends_on:
-      - database
-
-
   database:
     image: postgres:15-alpine
     container_name: burgerbuilder-db
     environment:
-      - POSTGRES_DB=burgerbuilder
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=YourStrong!Passw0rd
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d burgerbuilder"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - burgerbuilder-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: burgerbuilder-backend
+    env_file:
+      - environment.env
+
+    ports:
+      - "8080:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - burgerbuilder-network
+    healthcheck:
+      test: curl --fail http://localhost:8080/api/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:8080
+    container_name: burgerbuilder-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - burgerbuilder-network
+
+networks:
+  burgerbuilder-network:
+    driver: bridge
 
 volumes:
   postgres_data:

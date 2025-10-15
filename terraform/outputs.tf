@@ -1,26 +1,4 @@
-#output "resource_group_name" {
-# value = azurerm_resource_group.rg.name
-#}
-
-#output "acr_login_server" {
-# value = azurerm_container_registry.acr.login_server
-#}
-
-#output "acr_admin_username" {
-# value = azurerm_container_registry.acr.admin_username
-#}
-
-# -------------------------
-# Outputs
-# -------------------------
-output "resource_group_name" {
-  value = azurerm_resource_group.rg.name
-}
-
-output "acr_login_server" {
-  value = azurerm_container_registry.acr.login_server
-}
-
-output "acr_admin_username" {
-  value = azurerm_container_registry.acr.admin_username
-}
+output "appgw_public_ip" { value = azurerm_public_ip.pip_appgw.ip_address }
+output "fe_internal_fqdn" { value = azurerm_container_app.fe.latest_revision_fqdn }
+output "be_internal_fqdn" { value = azurerm_container_app.be.latest_revision_fqdn }
+output "sql_server" { value = azurerm_mssql_server.sql.fully_qualified_domain_name }

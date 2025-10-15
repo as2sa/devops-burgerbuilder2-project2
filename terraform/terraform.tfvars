@@ -1,3 +1,5 @@
-db_admin_password = "YourStrongSQL!Passw0rd"
-#"YourStrong!Passw0rd"
-                    
+project_name       = "brgr-asf"
+rg_name            = "rg-brgr-asf"
+location           = "southeastasia"
+sql_admin_user     = "sqladminuser"
+sql_admin_password = "BrgrAsf@2025"
